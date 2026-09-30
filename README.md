@@ -69,7 +69,7 @@ The current implementation is deterministic and explainable. It does **not** cla
 ### 1. Clone and enter the repository
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/pawank60025-coder/AcadTwin.git
 cd AcadTwin
 ```
 
