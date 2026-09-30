@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# Local/runtime data
+acadtwin.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/students.json
+
+# Local secrets/config
+.env
+.env.*
+!.env.example
+
+# Browser/test artifacts
+test-artifacts/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

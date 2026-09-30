@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}AcadTwin · Academic Twin{% endblock %}
+{% block breadcrumb %}Digital Twin{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{{ url_for('static', filename='css/twin.css') }}">{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div><span class="eyebrow twin-text">SIMULATE / OPTIMIZE / EXPLAIN</span><h1>Academic Digital Twin<span class="twin-dot">.</span></h1><p class="muted">{{ student.name }} · {{ student.roll_no }} · Semester {{ selected_semester }}</p></div>
+  <a class="secondary-btn" href="{{ url_for('student_profile', student_id=student.id, semester=selected_semester) }}">← Real academic record</a>
+</div>
+<div class="twin-notice"><span class="twin-notice-icon">◇</span><div><strong>Simulation only — your real academic record is unchanged.</strong><span>Explore possibilities using the same credit-weighted grading rules.</span></div><span class="twin-label">WHAT-IF LAB</span></div>
+<form class="twin-semester" method="get"><label for="twin-semester">Semester</label><select id="twin-semester" name="semester">{% for n in range(1,9) %}<option value="{{ n }}" {{ 'selected' if n == selected_semester }}>Semester {{ n }}</option>{% endfor %}</select><button class="secondary-btn" type="submit">Load record</button></form>
+{% if error %}<div class="twin-error" role="alert">{{ error }} No academic records were changed.</div>{% endif %}
+{% if actual %}
+<section class="twin-states" aria-label="Actual and simulated comparison">
+  {% for state, state_name, state_risk, kind in [(actual, 'Real academic state', actual_risk, 'actual'), (simulated, 'Digital twin state', simulated_risk, 'simulated')] %}
+  <article class="card state-card state-{{ kind }}">
+    <div class="state-heading"><span class="eyebrow">{{ 'ACTUAL / STORED MARKS' if kind == 'actual' else 'TWIN / TEMPORARY SCENARIO' }}</span><span class="badge risk-{{ state_risk.level }}">{{ state_risk.label }}</span></div>
+    <h2>{{ state_name }}</h2><div class="state-values"><div><strong>{{ '%.2f'|format(state.sgpa) }}</strong><span>SGPA / 10</span></div><div><strong>{{ '%.2f'|format(state.percentage) }}<small>%</small></strong><span>Percentage</span></div><div><strong class="state-result {{ 'positive' if state.result == 'PASS' else 'negative' }}">{{ state.result }}</strong><span>Semester result</span></div></div>
+  </article>
+  {% endfor %}
+</section>
+<div class="impact-strip" aria-live="polite"><span>SCENARIO IMPACT</span><strong class="{{ 'positive' if sgpa_difference > 0 else 'negative' if sgpa_difference < 0 else 'muted' }}">{{ '%+.2f'|format(sgpa_difference) }} <small>SGPA</small></strong><strong class="{{ 'positive' if percentage_difference > 0 else 'negative' if percentage_difference < 0 else 'muted' }}">{{ '%+.2f'|format(percentage_difference) }} <small>percentage points</small></strong><span class="muted">{{ 'Improvement from actual' if sgpa_difference > 0 else 'Below actual performance' if sgpa_difference < 0 else 'Same SGPA as actual' }}</span></div>
+<form method="post" id="twin-form" action="{{ url_for('student_twin', student_id=student.id) }}">
+  <input type="hidden" name="semester" value="{{ selected_semester }}">
+  <div class="twin-workspace">
+    <section class="card simulator-card">
+      <div class="card-header"><div><span class="eyebrow">01 / EXPLORE</span><h2>Build your scenario</h2><p class="muted">Adjust marks, then run the simulation.</p></div><span class="badge">{{ actual.total_credits }} credits</span></div>
+      <div class="table-wrapper"><table class="twin-subjects"><thead><tr><th>Subject</th><th>Credits</th><th>Actual</th><th>Simulated</th><th>Grade / GP</th></tr></thead><tbody>
+      {% for subject in simulated.subjects %}
+      <tr><td><strong>{{ subject.name }}</strong><span class="subject-code">{{ subject.code or '—' }}</span></td><td>{{ subject.credits }}</td><td class="actual-mark">{{ actual.subjects[loop.index0].marks }}</td><td><label class="sr-only" for="marks-{{ subject.id }}">Simulated marks for {{ subject.name }}</label><input class="mark-input" id="marks-{{ subject.id }}" name="marks_{{ subject.id }}" type="number" min="0" max="100" step="1" required value="{{ subject.marks }}"></td><td><span class="badge {{ 'fail' if subject.grade_point == 0 else '' }}">{{ subject.grade }} / {{ subject.grade_point }}</span></td></tr>
+      {% endfor %}
+      </tbody></table></div>
+      <div class="simulator-actions"><button class="twin-btn" type="submit" name="action" value="simulate">Run simulation ↗</button><button class="secondary-btn" type="submit" name="action" value="reset" formnovalidate>Reset to actual</button><span class="muted" id="scenario-status">Showing the last calculated scenario.</span></div>
+    </section>
+    <section class="card comparison-card"><div class="card-header"><div><span class="eyebrow">02 / COMPARE</span><h2>Every subject. Two possibilities.</h2><p class="muted">Actual marks vs your simulated scenario</p></div></div><div class="card-body"><div class="chart-wrap twin-chart"><canvas id="twin-chart" aria-label="Actual and simulated marks by subject" role="img"></canvas></div><p class="chart-fallback" id="twin-chart-fallback" hidden>Chart unavailable. The subject table shows all actual and simulated values.</p><div class="comparison-key"><span><i class="actual-key"></i>Actual marks</span><span><i class="simulated-key"></i>Simulated marks</span></div><p class="twin-chart-note muted">Grade points rise at 40, 50, 60, 70, 80 and 90 marks.</p></div></section>
+  </div>
+  <section class="card target-lab">
+    <div class="target-intro"><span class="eyebrow twin-text">03 / OPTIMIZE</span><h2>Target Performance Lab</h2><p class="muted">Find a credit-aware path from your scenario to your goal.</p></div>
+    <div class="target-controls"><label for="target-sgpa">Target SGPA</label><div><input id="target-sgpa" name="target_sgpa" type="number" min="0" max="10" step="0.01" value="{{ target }}"><button class="twin-btn" type="submit" name="action" value="solve">Calculate path →</button></div></div>
+    <p class="target-explainer">Rule-based planning · Grade thresholds · Marks capped at 100</p>
+  </section>
+</form>
+{% if solution %}
+<section class="card solution-card" aria-live="polite"><div class="card-header"><div><span class="eyebrow twin-text">YOUR IMPROVEMENT PATH · STARTING SGPA {{ '%.2f'|format(solution.current_sgpa) }}</span><h2>Target {{ '%.2f'|format(solution.target) }} <span class="muted">/ projected {{ '%.2f'|format(solution.performance.sgpa) }}</span></h2><p>{{ solution.message }}</p></div><span class="badge">{{ solution.priorities|length }} subject priorities</span></div>
+{% if solution.priorities %}<div class="priority-list">{% for priority in solution.priorities %}<article class="priority-item"><span class="priority-number">{{ loop.index }}</span><div><h3>{{ priority.name }}</h3><p class="muted">{{ priority.credits }} credits · {{ priority.current_marks }} → {{ priority.suggested_marks }} marks · Crosses a grade threshold</p></div><strong class="positive">+{{ '%.2f'|format(priority.impact) }} <small>SGPA</small></strong></article>{% endfor %}</div>{% endif %}
+<p class="solution-note muted">Suggested marks are now loaded into your Twin. This is a deterministic improvement plan, not a prediction of future marks.</p></section>
+{% endif %}
+<section class="card twin-insights"><div class="card-header"><div><span class="eyebrow">04 / EXPLAIN</span><h2>Academic Twin Insights</h2></div><span class="badge">Rule-based recommendations</span></div><div class="twin-insight-grid">{% for insight in insights %}<article><span class="insight-bullet">↗</span><p>{{ insight }}</p></article>{% endfor %}</div></section>
+<details class="grading-note"><summary>View prototype grading and risk rules</summary><p>90+ → 10 · 80+ → 9 · 70+ → 8 · 60+ → 7 · 50+ → 6 · 40+ → 5 · Below 40 → 0. SGPA = sum(grade point × credits) / total credits. Any subject below 40 means FAIL. High risk: FAIL or SGPA below 5. Moderate risk: SGPA below 6.5 or a subject between 40 and 44. These are project-defined rules.</p></details>
+{% else %}
+<section class="card empty-state"><span class="eyebrow twin-text">A TWIN STARTS WITH A RECORD</span><h2>No results for Semester {{ selected_semester }}</h2><p>Add the student’s semester marks to start exploring what-if scenarios.</p><a class="primary-btn" href="{{ url_for('student_profile', student_id=student.id, semester=selected_semester) }}">Go to student profile →</a></section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script type="application/json" id="twin-chart-data">{{ chart_data|tojson }}</script>
+<script defer src="{{ url_for('static', filename='js/twin.js') }}"></script>
+{% endblock %}

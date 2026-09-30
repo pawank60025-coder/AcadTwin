@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}AcadTwin · {{ status }}{% endblock %}
+{% block content %}
+<section class="card empty-state">
+  <span class="eyebrow">REQUEST {{ status }}</span>
+  <h1>{{ 'Record not found' if status == 404 else 'Let’s try that again' }}</h1>
+  <p>{{ message }}</p>
+  <a class="primary-btn" href="{{ url_for('home') }}">Return to dashboard</a>
+</section>
+{% endblock %}
